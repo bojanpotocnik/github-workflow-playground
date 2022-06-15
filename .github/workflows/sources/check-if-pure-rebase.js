@@ -33,37 +33,37 @@ const github = {
 async function put_this_under_script_with_in_yml() {
     /* ############ Copy from here down to pr-push-rebase-check.yml step check-if-pure-rebase ############ */
 
+    // https://octokit.github.io/rest.js/v18#pulls-list-reviews
+    const review_ids = await github.rest.pulls.listReviews({
+        owner: context.repo.owner,
+        repo: context.repo.repo,
+        pull_number: context.payload.number
+    }).then(rsp => {
+        return rsp.data;
+    }).then(reviews => {
+        // Dismissing already dismissed review will result in API error. Possible
+        // states are APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING.
+        return reviews.filter(r => r.state === "APPROVED").map(r => r.id);
+    });
+
+    if (!review_ids.length) {
+        console.log("No reviews to dismiss");
+        return "No approved reviews to dismiss, skipping checks";
+    }
+
     async function dismissReviews(message) {
-        // https://octokit.github.io/rest.js/v18#pulls-list-reviews
-        let review_ids = await github.rest.pulls.listReviews({
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            pull_number: context.payload.number
-        }).then(rsp => {
-            return rsp.data;
-        }).then(reviews => {
-            // Dismissing already dismissed review will result in API error. Possible
-            // states are APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING.
-            return reviews.filter(r => r.state === "APPROVED").map(r => r.id);
-        });
-
-        if (review_ids.length) {
-            console.log(`Dismissing reviews ${review_ids}`);
-
-            await Promise.all(review_ids.map(async (review_id) => {
-                await github.rest.pulls.dismissReview({
-                    owner: context.repo.owner,
-                    repo: context.repo.repo,
-                    pull_number: context.payload.number,
-                    review_id: review_id,
-                    message,
-                });
-            }));
-            // github.rest.pulls.requestReviewers could be used here to automatically
-            // re-request the reviews, but this is out of scope of this script.
-        } else {
-            console.log("No reviews to dismiss");
-        }
+        console.log(`Dismissing reviews ${review_ids}`);
+        await Promise.all(review_ids.map(async (review_id) => {
+            await github.rest.pulls.dismissReview({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                pull_number: context.payload.number,
+                review_id: review_id,
+                message,
+            });
+        }));
+        // github.rest.pulls.requestReviewers could be used here to automatically
+        // re-request the reviews, but this is out of scope of this script.
         return message;
     }
 
