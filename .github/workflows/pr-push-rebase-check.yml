@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  pull_request:
+    types: [synchronize]  # Trigger only when a pull request's head branch is updated.
+
+jobs:
+  pull-request:
+    name: Check if recent push is only a rebase on the base branch
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check patch files
+        id: check-if-pure-rebase
+        uses: actions/github-script@v6
+        with:
+          result-encoding: string
+          script: |
+            async function dismissReviews(message) {
+                // https://octokit.github.io/rest.js/v18#pulls-list-reviews
+                let review_ids = await github.rest.pulls.listReviews({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: context.payload.number
+                }).then(rsp => {
+                    return rsp.data;
+                }).then(reviews => {
+                    // Dismissing already dismissed review will result in API error. Possible
+                    // states are APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING.
+                    return reviews.filter(r => r.state === "APPROVED").map(r => r.id);
+                });
+            
+                if (review_ids.length) {
+                    console.log(`Dismissing reviews ${review_ids}`);
+            
+                    await Promise.all(review_ids.map(async (review_id) => {
+                        await github.rest.pulls.dismissReview({
+                            owner: context.repo.owner,
+                            repo: context.repo.repo,
+                            pull_number: context.payload.number,
+                            review_id: review_id,
+                            message,
+                        });
+                    }));
+                    // github.rest.pulls.requestReviewers could be used here to automatically
+                    // re-request the reviews, but this is out of scope of this script.
+                } else {
+                    console.log("No reviews to dismiss");
+                }
+                return message;
+            }
+            
+            // Get patch of the previous state (before push) and the current
+            // state (after push) of the PR, compared to the base branch.
+            // https://octokit.github.io/rest.js/v18#repos-compare-commits
+            const commonRequestParams = {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                base: context.payload.pull_request.base.ref,
+                // head: needs to be added
+                mediaType: {
+                    format: "application/vnd.github.v3.patch"
+                }
+            };
+            let patches = await Promise.all([
+                github.rest.repos.compareCommits({...commonRequestParams, head: context.payload.before}),
+                github.rest.repos.compareCommits({...commonRequestParams, head: context.payload.after})
+            ]).then(responses => {
+                return responses.map(rsp => rsp.data);
+            }).catch(err => {
+                console.error(err);
+                return null;
+            });
+            
+            if (!patches) {
+                // Always fallback to default always-dismiss behaviour on errors
+                return await dismissReviews("Dismissed reviews because pull-request patch files could not be checked");
+            }
+            
+            // Remove commit hashes from the patch files, which are the only thing changed if
+            // this is really only a pure rebase and nothing included in this PR is changed
+            patches = patches
+                .map(p => p.replace(
+                    // A brief metadata header that begins with "From <commit> Mon Sep 17 00:00:00 2001"
+                    /^From [\da-f]{40} Mon Sep 17 00:00:00 2001$/gm, "### REMOVED COMMIT METADATA HEADER ####"
+                ))
+                .map(p => p.replace(
+                    /^index [\da-f]{7}\.\.[\da-f]{7}(?: \d{6})?$/gm, "### REMOVED FILE INDEX HEADER ###"
+                ));
+            
+            if (patches[0] === patches[1]) {
+                return `Keeping the reviews because the latest push was only a rebase on ${context.payload.pull_request.base.ref}`
+            }
+            
+            console.log(
+                "########## BEFORE ##########\n" +
+                patches[0] +
+                "\n############################\n" +
+                "########## AFTER ###########\n" +
+                patches[1] +
+                "\n############################\n"
+            )
+            return await dismissReviews("Dismissed reviews because pull-request content was changed");
+
+      - name: Add summary
+        run: echo "${{steps.check-if-pure-rebase.outputs.result}}" >> $GITHUB_STEP_SUMMARY
