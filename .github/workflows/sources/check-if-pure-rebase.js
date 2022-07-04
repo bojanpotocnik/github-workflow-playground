@@ -11,8 +11,8 @@ const context = {
             }
         }
     },
-    api_url: "https://api.github.com",
-    server_url: "https://github.com"
+    apiUrl: "https://api.github.com",
+    serverUrl: "https://github.com"
 };
 const github = {
     rest: {
@@ -38,12 +38,8 @@ const github = {
 async function put_this_under_script_with_in_yml() {
     /* ############ Copy from here down to pr-push-rebase-check.yml step check-if-pure-rebase ############ */
 
-    // TODO: Remove, try to find the api_url
-    console.log(JSON.stringify(github));
-    console.log(JSON.stringify(context));
-
     const compare_url = context.payload.pull_request.base.repo.compare_url
-        .replace(`${github.api_url}/repos`, github.server_url)
+        .replace(`${context.apiUrl}/repos`, context.serverUrl)
         .replace("{base}", context.payload.pull_request.base.ref);
     console.info("Use these URLs for manual investigation (append '.patch' to download raw patch files):" +
         "\n    Before: " + compare_url.replace("{head}", context.payload.before) +
