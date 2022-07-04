@@ -91,6 +91,8 @@ async function put_this_under_script_with_in_yml() {
         );
     }
 
+    console.log(`Patch length: before = ${patches[0].length}, after = ${patches[1].length}`);
+
     // Remove commit hashes from the patch files, which are the only thing changed if
     // this is really only a pure rebase and nothing included in this PR is changed
     patches = patches
