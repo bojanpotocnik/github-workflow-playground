@@ -54,6 +54,7 @@ async function put_this_under_script_with_in_yml() {
     async function dismissReviews(message) {
         console.log(`Dismissing reviews ${review_ids}`);
         await Promise.all(review_ids.map(async (review_id) => {
+            console.debug(`Dismissing review ${review_id}`);
             await github.rest.pulls.dismissReview({
                 owner: context.repo.owner,
                 repo: context.repo.repo,
@@ -86,6 +87,7 @@ async function put_this_under_script_with_in_yml() {
         return responses.map(rsp => rsp.data);
     }).catch(err => {
         console.error(err);
+        console.error("##### ERR #####>>>" + JSON.stringify(err) + "<<<##### ERR #####");
         return null;
     });
 
