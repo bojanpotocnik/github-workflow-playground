@@ -4,10 +4,15 @@ const context = {
         number: 0,
         pull_request: {
             base: {
-                ref: "ref"
+                ref: "ref",
+                repo: {
+                    compare_url: "https://api.github.com/repos/:owner/:repo/compare/{base}...{head}"
+                }
             }
         }
-    }
+    },
+    api_url: "https://api.github.com",
+    server_url: "https://github.com"
 };
 const github = {
     rest: {
@@ -33,6 +38,16 @@ const github = {
 async function put_this_under_script_with_in_yml() {
     /* ############ Copy from here down to pr-push-rebase-check.yml step check-if-pure-rebase ############ */
 
+    // TODO: Remove, try to find the api_url
+    console.log(JSON.stringify(github));
+    console.log(JSON.stringify(context));
+
+    const compare_url = context.payload.pull_request.base.repo.compare_url
+        .replace(`${github.api_url}/repos`, github.server_url)
+        .replace("{base}", context.payload.pull_request.base.ref);
+    console.info("Use these URLs for manual investigation (append '.patch' to download raw patch files):" +
+        "\n    Before: " + compare_url.replace("{head}", context.payload.before) +
+        "\n    After:  " + compare_url.replace("{head}", context.payload.after));
 
     const commonOctokitParams = {owner: context.repo.owner, repo: context.repo.repo};
     const commonPullParams = {...commonOctokitParams, pull_number: context.payload.number};
@@ -108,14 +123,6 @@ async function put_this_under_script_with_in_yml() {
         return `Keeping the reviews because the latest push was only a rebase on ${context.payload.pull_request.base.ref}`
     }
 
-    console.log(
-        "########## BEFORE ##########\n" +
-        patches[0] +
-        "\n############################\n" +
-        "########## AFTER ###########\n" +
-        patches[1] +
-        "\n############################\n"
-    )
     return await dismissReviews("Dismissed reviews because pull-request content was changed");
 
     /* ############ Copy code to until here to pr-push-rebase-check.yml step check-if-pure-rebase ############ */
