@@ -11,11 +11,17 @@
     When enabled, pull requests targeting a matching branch require a number of approvals and no changes requested 
     before they can be merged.
 
+
 - **Require status checks to pass before merging**
   When enabled, commits must first be pushed to another branch, then merged or pushed directly to a branch that matches this rule after status checks have passed.
 
+  - **Status checks that are required:**  
+    - `Check if recent push is only a rebase on the base branch` (GitHub Actions)
+
+
 - **Require conversation resolution before merging**  
   When enabled, all conversations on code must be resolved before a pull request can be merged into a branch that matches this rule.
+
 
 - **Require linear history**  
   Prevent merge commits from being pushed to matching branches.
