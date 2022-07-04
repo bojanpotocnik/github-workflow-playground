@@ -33,12 +33,12 @@ const github = {
 async function put_this_under_script_with_in_yml() {
     /* ############ Copy from here down to pr-push-rebase-check.yml step check-if-pure-rebase ############ */
 
+
+    const commonOctokitParams = {owner: context.repo.owner, repo: context.repo.repo};
+    const commonPullParams = {...commonOctokitParams, pull_number: context.payload.number};
+
     // https://octokit.github.io/rest.js/v18#pulls-list-reviews
-    const review_ids = await github.rest.pulls.listReviews({
-        owner: context.repo.owner,
-        repo: context.repo.repo,
-        pull_number: context.payload.number
-    }).then(rsp => {
+    const review_ids = await github.rest.pulls.listReviews(commonPullParams).then(rsp => {
         return rsp.data;
     }).then(reviews => {
         // Dismissing already dismissed review will result in API error. Possible
@@ -55,13 +55,7 @@ async function put_this_under_script_with_in_yml() {
         console.log(`Dismissing reviews ${review_ids}`);
         await Promise.all(review_ids.map(async (review_id) => {
             console.debug(`Dismissing review ${review_id}`);
-            await github.rest.pulls.dismissReview({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                pull_number: context.payload.number,
-                review_id: review_id,
-                message,
-            });
+            await github.rest.pulls.dismissReview({...commonPullParams, review_id: review_id, message});
         }));
         // github.rest.pulls.requestReviewers could be used here to automatically
         // re-request the reviews, but this is out of scope of this script.
@@ -71,29 +65,30 @@ async function put_this_under_script_with_in_yml() {
     // Get patch of the previous state (before push) and the current
     // state (after push) of the PR, compared to the base branch.
     // https://octokit.github.io/rest.js/v18#repos-compare-commits
-    const commonRequestParams = {
-        owner: context.repo.owner,
-        repo: context.repo.repo,
+    const commonCompareParams = {
+        ...commonOctokitParams,
         base: context.payload.pull_request.base.ref,
         // head: needs to be added
         mediaType: {
             format: "application/vnd.github.v3.patch"
         }
     };
+    let api_error = "";
     let patches = await Promise.all([
-        github.rest.repos.compareCommits({...commonRequestParams, head: context.payload.before}),
-        github.rest.repos.compareCommits({...commonRequestParams, head: context.payload.after})
+        github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.before}),
+        github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.after})
     ]).then(responses => {
         return responses.map(rsp => rsp.data);
     }).catch(err => {
-        console.error(err);
-        console.error("##### ERR #####>>>" + JSON.stringify(err) + "<<<##### ERR #####");
+        api_error = ` (${err.message})`
         return null;
     });
 
     if (!patches) {
         // Always fallback to default always-dismiss behaviour on errors
-        return await dismissReviews("Dismissed reviews because pull-request patch files could not be checked");
+        return await dismissReviews(
+            "Dismissed reviews because pull-request patch files could not be checked" + api_error
+        );
     }
 
     // Remove commit hashes from the patch files, which are the only thing changed if
