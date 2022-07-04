@@ -80,7 +80,7 @@ async function put_this_under_script_with_in_yml() {
     ]).then(responses => {
         return responses.map(rsp => rsp.data);
     }).catch(err => {
-        api_error = ` (${err.message})`
+        api_error = ` (_${err.message}_)`
         return null;
     });
 
