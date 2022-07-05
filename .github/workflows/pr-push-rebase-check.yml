@@ -2,7 +2,9 @@ name: CI
 
 on:
   pull_request:
-    types: [synchronize]  # Trigger only when a pull request's head branch is updated.
+    # This job in fact only requires `synchronize` trigger to execute when a pull request's head branch is updated.
+    # However, if set as Required Status Check, it will block any newly opened PRs if using only `synchronize`.
+    types: [synchronize, opened, reopened]
 
 jobs:
   pull-request:
@@ -12,6 +14,8 @@ jobs:
     steps:
       - name: Check patch files
         id: check-if-pure-rebase
+        # Execute this step only on push/synchronize (event_name is always 'pull_request')
+        if: github.event.action == 'synchronize'
         uses: actions/github-script@v6
         with:
           result-encoding: string
@@ -100,4 +104,10 @@ jobs:
             return await dismissReviews("Dismissed reviews because pull-request content was changed");
 
       - name: Add summary
+        if: steps.check-if-pure-rebase.outcome == 'success'
         run: echo "${{steps.check-if-pure-rebase.outputs.result}}" >> $GITHUB_STEP_SUMMARY
+
+      - name: Skip this check (not a push)
+        # Execute this step only if check-if-pure-rebase was not executed (trigger was not a push)
+        if: steps.check-if-pure-rebase.outcome == 'skipped'
+        run: echo "This check was skipped ('${{ github.event_name }}' action was '${{ github.event.action }}')" >> $GITHUB_STEP_SUMMARY
