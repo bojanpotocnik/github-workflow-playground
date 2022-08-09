@@ -109,10 +109,14 @@ async function put_this_under_script_with_in_yml() {
     patches = patches
         .map(p => p.replace(
             // A brief metadata header that begins with "From <commit> Mon Sep 17 00:00:00 2001"
-            /^From [\da-f]{40} Mon Sep 17 00:00:00 2001$/gm, "### REMOVED COMMIT METADATA HEADER ####"
+            /^From [\da-f]{40} Mon Sep 17 00:00:00 2001$/gm, "### REMOVED COMMIT METADATA HEADER ###"
         ))
         .map(p => p.replace(
             /^index [\da-f]{7}\.\.[\da-f]{7}(?: \d{6})?$/gm, "### REMOVED FILE INDEX HEADER ###"
+        ))
+        .map(p => p.replace(
+            // Ignore (only) range information from change hunk header "@@ -l,s +l,s @@ optional section heading"
+            /^@@ -\d+,\d+ \+\d+,\d+ @@/gm, "@@ REMOVED RANGE INFO @@"
         ));
 
     if (patches[0] === patches[1]) {
