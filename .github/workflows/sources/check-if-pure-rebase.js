@@ -86,7 +86,7 @@ async function put_this_under_script_with_in_yml() {
     };
     let api_error = "";
     let patches = await Promise.all([
-        github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.before}),
+        github.rest.repos.compareCommits({...commonCompareParams, head: `${context.payload.before}a`}),
         github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.after})
     ]).then(responses => {
         return responses.map(rsp => rsp.data);
@@ -94,6 +94,8 @@ async function put_this_under_script_with_in_yml() {
         api_error = ` (_${err.message}_)`
         return null;
     });
+
+    console.log(patches);
 
     if (!patches) {
         // Always fallback to default always-dismiss behaviour on errors
