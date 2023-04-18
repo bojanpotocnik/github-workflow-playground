@@ -38,12 +38,7 @@ jobs:
                 // states are APPROVED, CHANGES_REQUESTED, COMMENTED, DISMISSED, PENDING.
                 return reviews.filter(r => r.state === "APPROVED").map(r => r.id);
             });
-        
-            if (!review_ids.length) {
-                console.log("No reviews to dismiss");
-                return "No approved reviews to dismiss, skipping checks";
-            }
-        
+
             async function dismissReviews(message) {
                 console.log(`Dismissing reviews ${review_ids}`);
                 await Promise.all(review_ids.map(async (review_id) => {
