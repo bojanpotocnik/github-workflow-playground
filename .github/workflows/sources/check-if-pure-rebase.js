@@ -90,9 +90,12 @@ async function put_this_under_script_with_in_yml() {
         return null;
     });
 
-    console.warn(`patches=${patches}`);
-    console.log(`patches=${patches}`);
-    console.warn(patches);
+    console.log(patches);
+
+    patches = [
+        {},
+        "some patch"
+    ];
 
     if (!patches) {
         // Always fallback to default always-dismiss behaviour on errors
