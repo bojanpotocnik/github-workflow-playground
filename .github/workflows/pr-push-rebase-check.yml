@@ -40,8 +40,7 @@ jobs:
             });
         
             if (!review_ids.length) {
-                console.log("No reviews to dismiss");
-                return "No approved reviews to dismiss, skipping checks";
+                console.log("No reviews to dismiss, but continue");
             }
         
             async function dismissReviews(message) {
@@ -80,6 +79,8 @@ jobs:
                 api_error = ` (_${err.message}_)`
                 return null;
             });
+            
+            patches = ["patch", {}];
         
             if (!patches || (patches.length !== 2) || !patches.every(p => typeof p === 'string')) {
                 console.log("Invalid patches", patches);
