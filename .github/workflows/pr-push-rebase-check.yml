@@ -39,11 +39,6 @@ jobs:
                 return reviews.filter(r => r.state === "APPROVED").map(r => r.id);
             });
         
-            if (!review_ids.length) {
-                console.log("No reviews to dismiss");
-                return "No approved reviews to dismiss, skipping checks";
-            }
-        
             async function dismissReviews(message) {
                 console.log(`Dismissing reviews ${review_ids}`);
                 await Promise.all(review_ids.map(async (review_id) => {
@@ -68,7 +63,7 @@ jobs:
             };
             let api_error = "";
             let patches = await Promise.all([
-                github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.before}),
+                github.rest.repos.compareCommits({...commonCompareParams, head: `${context.payload.before}a`}),
                 github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.after})
             ]).then(responses => {
                 return responses.map(rsp => rsp.data);
@@ -76,6 +71,10 @@ jobs:
                 api_error = ` (_${err.message}_)`
                 return null;
             });
+        
+            console.warn(`patches=${patches}`);
+            console.log(`patches=${patches}`);
+            console.warn(patches);
         
             if (!patches) {
                 // Always fallback to default always-dismiss behaviour on errors
@@ -106,6 +105,7 @@ jobs:
             }
         
             return await dismissReviews("Dismissed reviews because pull-request content was changed");
+
 
       - name: Add summary
         if: steps.check-if-pure-rebase.outcome == 'success'

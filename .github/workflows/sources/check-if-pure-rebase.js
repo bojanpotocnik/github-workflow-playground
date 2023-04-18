@@ -57,11 +57,6 @@ async function put_this_under_script_with_in_yml() {
         return reviews.filter(r => r.state === "APPROVED").map(r => r.id);
     });
 
-    if (!review_ids.length) {
-        console.log("No reviews to dismiss");
-        return "No approved reviews to dismiss, skipping checks";
-    }
-
     async function dismissReviews(message) {
         console.log(`Dismissing reviews ${review_ids}`);
         await Promise.all(review_ids.map(async (review_id) => {
@@ -95,7 +90,9 @@ async function put_this_under_script_with_in_yml() {
         return null;
     });
 
-    console.log(patches);
+    console.warn(`patches=${patches}`);
+    console.log(`patches=${patches}`);
+    console.warn(patches);
 
     if (!patches) {
         // Always fallback to default always-dismiss behaviour on errors
