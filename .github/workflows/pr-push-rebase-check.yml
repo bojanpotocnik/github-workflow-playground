@@ -30,7 +30,7 @@ jobs:
             const commonOctokitParams = {owner: context.repo.owner, repo: context.repo.repo};
             const commonPullParams = {...commonOctokitParams, pull_number: context.payload.number};
         
-            // https://octokit.github.io/rest.js/v18#pulls-list-reviews
+            // https://octokit.github.io/rest.js/v19#pulls-list-reviews
             const review_ids = await github.rest.pulls.listReviews(commonPullParams).then(rsp => {
                 return rsp.data;
             }).then(reviews => {
@@ -57,19 +57,23 @@ jobs:
         
             // Get patch of the previous state (before push) and the current
             // state (after push) of the PR, compared to the base branch.
-            // https://octokit.github.io/rest.js/v18#repos-compare-commits
+            // https://octokit.github.io/rest.js/v19#repos-compare-commits-with-basehead
             const commonCompareParams = {
                 ...commonOctokitParams,
-                base: context.payload.pull_request.base.ref,
-                // head: needs to be added
                 mediaType: {
-                    format: "application/vnd.github.v3.patch"
+                    format: "patch"
                 }
             };
             let api_error = "";
             let patches = await Promise.all([
-                github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.before}),
-                github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.after})
+                github.rest.repos.compareCommitsWithBasehead({
+                    ...commonCompareParams,
+                    basehead: `${context.payload.pull_request.base.ref}...${context.payload.before}`
+                }),
+                github.rest.repos.compareCommitsWithBasehead({
+                    ...commonCompareParams,
+                    basehead: `${context.payload.pull_request.base.ref}...${context.payload.after}`
+                })
             ]).then(responses => {
                 return responses.map(rsp => rsp.data);
             }).catch(err => {
@@ -77,7 +81,11 @@ jobs:
                 return null;
             });
         
-            if (!patches) {
+            if (!patches || (patches.length !== 2) || !patches.every(p => typeof p === 'string')) {
+                console.log("Invalid patches", patches);
+                if (!api_error) {
+                    api_error = " (cannot handle API response)";
+                }
                 // Always fallback to default always-dismiss behaviour on errors
                 return await dismissReviews(
                     "Dismissed reviews because pull-request patch files could not be checked" + api_error
