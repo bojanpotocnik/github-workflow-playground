@@ -78,7 +78,7 @@ async function put_this_under_script_with_in_yml() {
     const commonCompareParams = {
         ...commonOctokitParams,
         mediaType: {
-            format: "application/vnd.github.patch"
+            format: "patch"
         }
     };
     let api_error = "";
