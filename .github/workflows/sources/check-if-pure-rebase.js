@@ -29,6 +29,10 @@ const github = {
             compareCommits: function (args) {
                 console.log("github.rest.repos.compareCommits(args)", args);
                 return "patch";
+            },
+            compareCommitsWithBasehead: function (args) {
+                console.log("github.rest.repos.compareCommitsWithBasehead(args)", args);
+                return "patch";
             }
         }
     },
@@ -48,7 +52,7 @@ async function put_this_under_script_with_in_yml() {
     const commonOctokitParams = {owner: context.repo.owner, repo: context.repo.repo};
     const commonPullParams = {...commonOctokitParams, pull_number: context.payload.number};
 
-    // https://octokit.github.io/rest.js/v18#pulls-list-reviews
+    // https://octokit.github.io/rest.js/v19#pulls-list-reviews
     const review_ids = await github.rest.pulls.listReviews(commonPullParams).then(rsp => {
         return rsp.data;
     }).then(reviews => {
@@ -70,19 +74,23 @@ async function put_this_under_script_with_in_yml() {
 
     // Get patch of the previous state (before push) and the current
     // state (after push) of the PR, compared to the base branch.
-    // https://octokit.github.io/rest.js/v18#repos-compare-commits
+    // https://octokit.github.io/rest.js/v19#repos-compare-commits-with-basehead
     const commonCompareParams = {
         ...commonOctokitParams,
-        base: context.payload.pull_request.base.ref,
-        // head: needs to be added
         mediaType: {
-            format: "application/vnd.github.v3.patch"
+            format: "application/vnd.github.patch"
         }
     };
     let api_error = "";
     let patches = await Promise.all([
-        github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.before}),
-        github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.after})
+        github.rest.repos.compareCommitsWithBasehead({
+            ...commonCompareParams,
+            basehead: `${context.payload.pull_request.base.ref}...${context.payload.before}`
+        }),
+        github.rest.repos.compareCommitsWithBasehead({
+            ...commonCompareParams,
+            basehead: `${context.payload.pull_request.base.ref}...${context.payload.after}`
+        })
     ]).then(responses => {
         return responses.map(rsp => rsp.data);
     }).catch(err => {
@@ -90,12 +98,21 @@ async function put_this_under_script_with_in_yml() {
         return null;
     });
 
+    console.log(typeof patches);
     console.log(patches);
+    try {
+        console.log(typeof patches, typeof patches[0], typeof patches[1]);
+    }
+    catch (e) {
+        console.log(e);
+    }
 
     patches = [
         {},
         "some patch"
     ];
+
+    console.log(typeof patches[0], typeof patches[1]);
 
     if (!patches) {
         // Always fallback to default always-dismiss behaviour on errors
