@@ -81,7 +81,7 @@ async function put_this_under_script_with_in_yml() {
     };
     let api_error = "";
     let patches = await Promise.all([
-        github.rest.repos.compareCommits({...commonCompareParams, head: `${context.payload.before}a`}),
+        github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.before}),
         github.rest.repos.compareCommits({...commonCompareParams, head: context.payload.after})
     ]).then(responses => {
         return responses.map(rsp => rsp.data);
